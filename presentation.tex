@@ -80,8 +80,8 @@ England/University of Bristol}}
 \begin{frame}[plain]
     \begin{center}
         \Large
-    \href{https://www.mentimeter.com/s/c19dfa0c379d263cddf7720f52d3c248/949c9d24495c}{Go
-        to www.menti.com and use the code 60 58 02}
+    \href{https://www.menti.com/y9mm2t3666}{Go
+        to www.menti.com \\ and use the code 58 21 00 9}
     \end{center}
 \end{frame}
 
@@ -106,7 +106,7 @@ England/University of Bristol}}
 
     \scriptsize
     \begin{shcode}
-$ curl 'https://robomaze.skadge.org/api?move=\["Wall-E","E"\]'
+$ curl 'https://robomaze.skadge.org/move/Wall-E/E'
     \end{shcode}
 
 \end{frame}
@@ -201,9 +201,6 @@ def astar(start, end):
 
   return come_from
 \end{pythoncode*}
-\end{frame}
-
-\begin{frame}{}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -383,6 +380,24 @@ $ g++ request.cpp -orequest
 
 \end{frame}
 
+\begin{frame}[fragile]{Easy! Missing library!}
+
+    \begin{shcode}
+request.cpp:4:10: fatal error: cpprest/http_client.h: No such file or directory
+    4 | #include <cpprest/http_client.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+    \end{shcode}
+
+    \pause
+
+    \begin{shcode}
+$ sudo apt install libcpprest-dev
+$ g++ request.cpp -orequest
+    \end{shcode}
+
+
+\end{frame}
 \imageframe[color=black]{linker_errors1}
 \imageframe[color=black]{linker_errors2}
 
@@ -415,7 +430,7 @@ $ g++ request.cpp -lcpprest -orequest
 \pause
 
 \begin{shcode}
-$ g++ request.cpp -lcpprest -lboost_system -lcrypto  -orequest
+$ g++ request.cpp -lcpprest -lboost_system -lcrypto -lpthread -orequest
 $ ./request Wall-E S
 \end{shcode}
 
@@ -439,8 +454,7 @@ int main(int argc, char* argv[])
     http_client client(U("https://robomaze.skadge.org/"));
 
     // Build request URI and start the request.
-    uri_builder builder(U("/api"));
-    builder.append_query(U("move"), U("[\"" + string(argv[1]) +"\",\"" + string(argv[2]) + "\"]"));
+    uri_builder builder(U("move/" + string(argv[1]) + "/" + string(argv[2])));
     http_response response = client.request(methods::GET, builder.to_string()).get();
 
     cout << "Received response status code:" << response.status_code() << endl;
@@ -491,51 +505,43 @@ Path planning in C++, of course!
 
 \begin{frame}[fragile]{astar.h}
 \begin{cppcode}
-#include <memory> // for unique_ptr
-#include <tuple>
-#include <string>
+typedef std::tuple<int, int> Position;
+typedef std::tuple<Position, int> Node; // {position, score}
+typedef std::vector<Node> NodesList;
+typedef std::tuple<bool, bool, bool, bool> Obstacle;
 
-typedef std::tuple<unsigned int, unsigned int> Position;
-
+const int MAZE_SIZE = 100;
 const Position START_POS {1, 1};
 const Position END_GOAL {98, 98};
-
-struct Node
-{
-    std::unique_ptr<Node> parent;
-    Position position;
-    unsigned int distance_to_start;
-    unsigned int total_cost;
-};
 
 class AStar
 {
 public:
     AStar();
-
-    Position planNextPosition();
-
-    std::string getNextMove();
+    std::string getNextMove(Obstacle obstacle);
 
 private:
+    // contains our maze (the portion we have already explored, anyway)
+    // 'true' means 'there is a wall'
+    std::array<bool, MAZE_SIZE * MAZE_SIZE> maze;
 
     Position current_position;
+
+    Position planNextPosition();
+    unsigned int heuristic(Position node, Position goal);
 };
 \end{cppcode}
 \end{frame}
 \begin{frame}[fragile]{astar.cpp}
 \begin{cppcode}
-#include <thread> // std::this_thread::sleep_for
-#include <chrono> // std::chrono::seconds
-
 #include "astar.h"
 
 using namespace std;
-using namespace std::chrono_literals;
 
-AStar::AStar()
+AStar::AStar() :
+    current_position(START_POS) // initialiase current_pos to our start position
 {
-    // todo!
+    maze.fill(false); // maze is initially unknown -> assume no obstacles
 }
 
 Position AStar::planNextPosition()
@@ -543,14 +549,15 @@ Position AStar::planNextPosition()
     // todo!
 }
 
-std::string AStar::getNextMove()
+unsigned int AStar::heuristic(Position node, Position goal)
 {
     // todo!
+}
 
-    this_thread::sleep_for(250ms);
-
+std::string AStar::getNextMove(Obstacle obstacles)
+{
+    // todo!
     return "S";
-
 }
 \end{cppcode}
 \end{frame}
@@ -574,8 +581,7 @@ int main(int argc, char* argv[])
 
     string next_move("E");
     while(true) {
-        uri_builder builder(U("/api"));
-        builder.append_query(U("move"), U("[\"" + string(argv[1]) +"\",\"" + next_move + "\"]"));
+        uri_builder builder(U("/move/" + string(argv[1]) + "/" + next_move));
         http_response response = client.request(methods::GET, builder.to_string()).get();
 
         //...
